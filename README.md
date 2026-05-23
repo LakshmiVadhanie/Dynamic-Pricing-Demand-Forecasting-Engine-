@@ -23,44 +23,6 @@ Snowflake (raw) -> PySpark (feature engineering) -> MLflow (experiment tracking)
 | Visualization | Power BI (DAX measures in `/docs`) |
 | Orchestration | Databricks Workflows |
 
-## Quickstart
-
-### Prerequisites
-
-- Python 3.9+
-- Java 11 (for PySpark local mode)
-- Databricks CLI
-- Snowflake account with Favorita data loaded
-
-### Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Configure credentials
-
-```bash
-cp .env.example .env
-# Fill in Snowflake and Databricks credentials
-```
-
-### Run locally (PySpark local mode)
-
-```bash
-python src/ingestion/snowflake_loader.py
-python src/features/feature_engineering.py
-python src/modeling/elasticity_model.py
-python src/modeling/demand_forecast.py
-python src/inference/score_skus.py
-```
-
-### Deploy to Databricks
-
-```bash
-databricks bundle deploy --target dev
-databricks bundle run pricing_pipeline --target dev
-```
 
 ## Project Structure
 
@@ -89,6 +51,3 @@ dynamic-pricing-engine/
 
 Kaggle Favorita Grocery Sales Forecasting dataset. Load into Snowflake using the schema in `docs/snowflake_schema.sql`.
 
-## License
-
-MIT
