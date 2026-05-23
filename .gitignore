@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+mlruns/
+*.egg-info/
+dist/
+build/
+.DS_Store
+*.parquet
+*.csv
+data/
+mlflow_artifacts/
+.databricks/
+bundle.lock.yml
