@@ -1,0 +1,89 @@
+bundle:
+  name: dynamic_pricing_engine
+
+variables:
+  cluster_id:
+    description: Existing interactive cluster ID for job runs
+    default: ""
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: ${env:DATABRICKS_HOST}
+
+  prod:
+    mode: production
+    workspace:
+      host: ${env:DATABRICKS_HOST}
+
+resources:
+  jobs:
+    pricing_pipeline:
+      name: Dynamic Pricing and Demand Forecasting Pipeline
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?" # 2 AM daily
+        timezone_id: "America/Chicago"
+      email_notifications:
+        on_failure:
+          - ml-team@yourcompany.com
+
+      tasks:
+        - task_key: snowflake_ingestion
+          description: Load Favorita tables from Snowflake into Delta
+          python_script_task:
+            python_file: src/ingestion/snowflake_loader.py
+          existing_cluster_id: ${var.cluster_id}
+          libraries:
+            - pypi:
+                package: snowflake-connector-python==3.9.0
+
+        - task_key: feature_engineering
+          description: Construct lag, rolling, and price gap features via PySpark
+          depends_on:
+            - task_key: snowflake_ingestion
+          python_script_task:
+            python_file: src/features/feature_engineering.py
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: elasticity_modeling
+          description: Hierarchical OLS + DiD price elasticity per SKU
+          depends_on:
+            - task_key: feature_engineering
+          python_script_task:
+            python_file: src/modeling/elasticity_model.py
+          existing_cluster_id: ${var.cluster_id}
+          libraries:
+            - pypi:
+                package: statsmodels==0.14.2
+
+        - task_key: demand_forecasting
+          description: XGBoost + ARIMA ensemble demand forecasting
+          depends_on:
+            - task_key: feature_engineering
+          python_script_task:
+            python_file: src/modeling/demand_forecast.py
+          existing_cluster_id: ${var.cluster_id}
+          libraries:
+            - pypi:
+                package: xgboost==2.0.3
+            - pypi:
+                package: statsmodels==0.14.2
+
+        - task_key: batch_scoring
+          description: Score all SKUs with registered XGBoost model
+          depends_on:
+            - task_key: demand_forecasting
+          python_script_task:
+            python_file: src/inference/score_skus.py
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: powerbi_export
+          description: Write Power BI parquet exports and validation charts
+          depends_on:
+            - task_key: batch_scoring
+            - task_key: elasticity_modeling
+          python_script_task:
+            python_file: src/viz/powerbi_export.py
+          existing_cluster_id: ${var.cluster_id}
